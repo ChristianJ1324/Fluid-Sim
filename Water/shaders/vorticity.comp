@@ -1,0 +1,37 @@
+#version 430 core
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+layout(binding = 0) uniform sampler3D u_Velocity;
+layout(binding = 1, rgba16f) uniform writeonly image3D u_Vorticity;
+
+uniform vec3 u_GridSize;
+
+void main() {
+    ivec3 pos = ivec3(gl_GlobalInvocationID.xyz);
+    if(any(greaterThanEqual(pos, ivec3(u_GridSize)))) return;
+
+    vec3 vL = pos.x > 0 ? texelFetch(u_Velocity, pos - ivec3(1, 0, 0), 0).xyz : texelFetch(u_Velocity, pos, 0).xyz;
+    vec3 vR = pos.x < int(u_GridSize.x)-1 ? texelFetch(u_Velocity, pos + ivec3(1, 0, 0), 0).xyz : texelFetch(u_Velocity, pos, 0).xyz;
+    vec3 vD = pos.y > 0 ? texelFetch(u_Velocity, pos - ivec3(0, 1, 0), 0).xyz : texelFetch(u_Velocity, pos, 0).xyz;
+    vec3 vU = pos.y < int(u_GridSize.y)-1 ? texelFetch(u_Velocity, pos + ivec3(0, 1, 0), 0).xyz : texelFetch(u_Velocity, pos, 0).xyz;
+    vec3 vB = pos.z > 0 ? texelFetch(u_Velocity, pos - ivec3(0, 0, 1), 0).xyz : texelFetch(u_Velocity, pos, 0).xyz;
+    vec3 vF = pos.z < int(u_GridSize.z)-1 ? texelFetch(u_Velocity, pos + ivec3(0, 0, 1), 0).xyz : texelFetch(u_Velocity, pos, 0).xyz;
+
+    // Curl of velocity field
+    float dx_vy = 0.5 * (vR.y - vL.y);
+    float dx_vz = 0.5 * (vR.z - vL.z);
+    
+    float dy_vx = 0.5 * (vU.x - vD.x);
+    float dy_vz = 0.5 * (vU.z - vD.z);
+    
+    float dz_vx = 0.5 * (vF.x - vB.x);
+    float dz_vy = 0.5 * (vF.y - vB.y);
+
+    vec3 vorticity = vec3(
+        dy_vz - dz_vy,
+        dz_vx - dx_vz,
+        dx_vy - dy_vx
+    );
+
+    imageStore(u_Vorticity, pos, vec4(vorticity, length(vorticity)));
+}

@@ -1,0 +1,23 @@
+# Visual Studio Hidden Folder and Cache
+.vs/
+*.db
+*.db-shm
+*.db-wal
+*.opendb
+*.sqlite
+fileList.bin
+*.json
+
+# Visual Studio IntelliSense / Precompiled Headers
+ipch/
+*.ipch
+
+# Library Files (GLFW, etc.)
+*.dll
+*.lib
+*.pdb
+
+# Build Outputs
+x64/
+Debug/
+Release/

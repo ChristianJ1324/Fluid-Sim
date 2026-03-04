@@ -1,0 +1,29 @@
+#version 430 core
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+layout(binding = 0) uniform sampler3D u_Pressure;
+layout(binding = 1) uniform sampler3D u_Divergence;
+layout(binding = 2, r16f) uniform writeonly image3D u_Target;
+
+uniform vec3 u_GridSize;
+
+void main() {
+    ivec3 pos = ivec3(gl_GlobalInvocationID.xyz);
+    if(any(greaterThanEqual(pos, ivec3(u_GridSize)))) return;
+
+    // Pure Neumann boundary conditions: dp/dn = 0
+    // At boundary, pressure = neighbor's pressure
+    float pCenter = texelFetch(u_Pressure, pos, 0).r;
+    float pL = pos.x > 0 ? texelFetch(u_Pressure, pos - ivec3(1,0,0), 0).r : pCenter;
+    float pR = pos.x < int(u_GridSize.x)-1 ? texelFetch(u_Pressure, pos + ivec3(1,0,0), 0).r : pCenter;
+    float pD = pos.y > 0 ? texelFetch(u_Pressure, pos - ivec3(0,1,0), 0).r : pCenter;
+    float pU = pos.y < int(u_GridSize.y)-1 ? texelFetch(u_Pressure, pos + ivec3(0,1,0), 0).r : pCenter;
+    float pB = pos.z > 0 ? texelFetch(u_Pressure, pos - ivec3(0,0,1), 0).r : pCenter;
+    float pF = pos.z < int(u_GridSize.z)-1 ? texelFetch(u_Pressure, pos + ivec3(0,0,1), 0).r : pCenter;
+
+    float div = texelFetch(u_Divergence, pos, 0).r;
+    
+    float newP = (pL + pR + pD + pU + pB + pF - div) / 6.0;
+    
+    imageStore(u_Target, pos, vec4(newP, 0, 0, 0));
+}
